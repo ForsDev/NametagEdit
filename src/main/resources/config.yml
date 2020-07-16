@@ -34,10 +34,10 @@ ClearEmptyTeamsInterval: -1
 # heaven. Useful for reporting issues!
 Debug: false
 #
-# Some servers have different permissions per world, and therefore different potential nametags
-# per world. If you want to refresh a player's nametag when they change worlds, set
-# this option to true.
-RefreshTagOnWorldChange: false
+# Dislabed worlds
+# Tags won't be applied to players that are in such worlds
+# and will be cleared before teleporting to them and restored after teleporting from them
+DisabledWorlds: []
 #
 # If enabled, NametagEdit will refresh nametags on an interval. Note: this does NOT do any
 # reloading. This will not pickup changes made from the file or database. Instead, it will

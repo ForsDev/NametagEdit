@@ -26,6 +26,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerChangedWorldEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
@@ -47,7 +48,7 @@ public class NametagHandler implements Listener {
     @Getter(AccessLevel.NONE)
     private boolean tabListEnabled;
     private boolean longNametagsEnabled;
-    private boolean refreshTagOnWorldChange;
+    private Set<String> disabledWorlds;
 
     private BukkitTask clearEmptyTeamTask;
     private BukkitTask refreshNametagTask;
@@ -145,20 +146,19 @@ public class NametagHandler implements Listener {
         }.runTaskLaterAsynchronously(plugin, 1);
     }
 
-    /**
-     * Some users may have different permissions per world.
-     * If this is enabled, their tag will be reloaded on TP.
-     */
-    @EventHandler
-    public void onTeleport(final PlayerChangedWorldEvent event) {
-        if (!refreshTagOnWorldChange) return;
 
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                applyTagToPlayer(event.getPlayer(), false);
-            }
-        }.runTaskLater(plugin, 3);
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onPreWorldTeleport(final PlayerTeleportEvent event) {
+    	if (disabledWorlds.contains(event.getTo().getWorld().getName())) {
+    		nametagManager.reset(event.getPlayer().getName());
+    	}
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onPostWorldTeleport(final PlayerChangedWorldEvent event) {
+    	if (!disabledWorlds.contains(event.getPlayer().getWorld().getName())) {
+    		applyTagToPlayer(event.getPlayer(), false);
+    	}
     }
 
     private void handleClear(UUID uuid, String player) {
@@ -332,7 +332,7 @@ public class NametagHandler implements Listener {
         this.debug = config.getBoolean("Debug");
         this.tabListEnabled = config.getBoolean("Tablist.Enabled");
         this.longNametagsEnabled = config.getBoolean("Tablist.LongTags");
-        this.refreshTagOnWorldChange = config.getBoolean("RefreshTagOnWorldChange");
+        this.disabledWorlds = new HashSet<>(config.getStringList("DisabledWorlds"));
         DISABLE_PUSH_ALL_TAGS = config.getBoolean("DisablePush");
 
         if (config.getBoolean("MetricsEnabled")) {
@@ -386,6 +386,10 @@ public class NametagHandler implements Listener {
                 }
             }.runTaskAsynchronously(plugin);
             return;
+        }
+
+        if (disabledWorlds.contains(player.getWorld().getName())) {
+        	return;
         }
 
         INametag tempNametag = getPlayerData(player);
